@@ -1,0 +1,143 @@
+{
+  "info": {
+    "name": "Tabungan Haji API",
+    "description": "Collection untuk endpoint tabungan-haji-api (Nasabah module + health check).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "b6b5a8e0-1f9a-4f0e-9c1d-tabunganhaji01"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "nasabahId",
+      "value": "",
+      "type": "string",
+      "description": "Diisi otomatis dari response Create Nasabah (test script)."
+    }
+  ],
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": ["{{baseUrl}}"],
+          "path": ["health"]
+        },
+        "description": "Cek service alive. Response: { status, service, timestamp }."
+      },
+      "response": []
+    },
+    {
+      "name": "Nasabah",
+      "item": [
+        {
+          "name": "Create Nasabah",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status 201', function () {",
+                  "  pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "const body = pm.response.json();",
+                  "if (body && body.id) {",
+                  "  pm.collectionVariables.set('nasabahId', body.id);",
+                  "  console.log('Saved nasabahId =', body.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nik\": \"3174010101900001\",\n  \"nama\": \"Budi Santoso\",\n  \"email\": \"budi.santoso@example.com\",\n  \"nomorHp\": \"081234567890\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/nasabah",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "nasabah"]
+            },
+            "description": "Membuat nasabah baru.\n\nValidasi:\n- nik: tepat 16 digit angka\n- nama: 3-100 karakter\n- email: format email valid (max 150)\n- nomorHp: format 08xxxxxxxxxx (10-13 digit)\n\nResponse:\n- 201: object Nasabah\n- 400: VALIDATION_ERROR\n- 409: DUPLICATE_ENTRY (nik/email sudah ada)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Nasabah",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/nasabah",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "nasabah"]
+            },
+            "description": "List semua nasabah, diurutkan createdAt desc.\n\nResponse 200: { data: Nasabah[], total: number }"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Nasabah By Id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/nasabah/{{nasabahId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "nasabah", "{{nasabahId}}"]
+            },
+            "description": "Ambil 1 nasabah by UUID.\n\nResponse:\n- 200: object Nasabah\n- 400: VALIDATION_ERROR (id bukan UUID)\n- 404: NOT_FOUND"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Nasabah",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama\": \"Budi Santoso Updated\",\n  \"nomorHp\": \"081298765432\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/nasabah/{{nasabahId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "nasabah", "{{nasabahId}}"]
+            },
+            "description": "Update sebagian/seluruh field nasabah (partial update). Semua field optional, namun jika dikirim harus memenuhi validasi yang sama dengan Create.\n\nResponse:\n- 200: object Nasabah\n- 400: VALIDATION_ERROR\n- 404: NOT_FOUND\n- 409: DUPLICATE_ENTRY"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Nasabah",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/nasabah/{{nasabahId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "nasabah", "{{nasabahId}}"]
+            },
+            "description": "Hapus nasabah by UUID.\n\nResponse:\n- 204: no content\n- 400: VALIDATION_ERROR\n- 404: NOT_FOUND"
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
