@@ -23,11 +23,22 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^24.12.4",
     "nodemon": "^3.1.14",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nissaadila/ODPTabunganHaji.git"
+  },
+  "keywords": [],
+  "bugs": {
+    "url": "https://github.com/nissaadila/ODPTabunganHaji/issues"
+  },
+  "homepage": "https://github.com/nissaadila/ODPTabunganHaji#readme"
 }

@@ -13,6 +13,7 @@ model Nasabah {
   nama         String         @db.VarChar(100)
   email        String         @unique @db.VarChar(150)
   nomorHp      String         @map("nomor_hp") @db.VarChar(20)
+  passwordHash String?        @map("password_hash") @db.VarChar(255)
   tabungan     TabunganHaji[]
   createdAt    DateTime       @default(now()) @map("created_at")
   updatedAt    DateTime       @updatedAt @map("updated_at")
@@ -46,4 +47,13 @@ model Transaksi {
   waktu          DateTime     @default(now())
 
   @@map("transaksi")
+}
+
+model RevokedToken {
+  jti       String   @id
+  expiresAt DateTime @map("expires_at")
+  revokedAt DateTime @default(now()) @map("revoked_at")
+
+  @@index([expiresAt])
+  @@map("revoked_token")
 }
