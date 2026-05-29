@@ -38,6 +38,27 @@ export const authController = {
     }
   },
 
+  async me(req: Request, res: Response) {
+    if (!req.user) {
+      return res.status(401).json({
+        error: "UNAUTHORIZED",
+        message: "Tidak terautentikasi",
+      });
+    }
+    try {
+      const result = await authService.me(req.user.sub);
+      return res.status(200).json(result);
+    } catch (err) {
+      if (err instanceof NasabahNotFoundError) {
+        return res.status(404).json({
+          error: "NOT_FOUND",
+          message: err.message,
+        });
+      }
+      throw err;
+    }
+  },
+
   async logout(req: Request, res: Response) {
     if (!req.user) {
       return res.status(401).json({

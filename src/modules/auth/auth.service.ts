@@ -90,6 +90,41 @@ export const authService = {
     };
   },
 
+  async me(nasabahId: string) {
+    const nasabah = await prisma.nasabah.findUnique({
+      where: { id: nasabahId },
+      include: { tabungan: { orderBy: { dibukaAt: "asc" }, take: 1 } },
+    });
+    if (!nasabah) throw new NasabahNotFoundError();
+
+    const tabungan = nasabah.tabungan[0] ?? null;
+    const adminEmails = (process.env.ADMIN_EMAILS ?? "")
+      .split(",")
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean);
+    const isAdmin = adminEmails.includes(nasabah.email.toLowerCase());
+
+    return {
+      nasabah: {
+        id: nasabah.id,
+        nama: nasabah.nama,
+        email: nasabah.email,
+        nik: nasabah.nik,
+        nomorHp: nasabah.nomorHp,
+      },
+      isAdmin,
+      tabungan: tabungan
+        ? {
+            id: tabungan.id,
+            nomorRekening: tabungan.nomorRekening,
+            saldo: tabungan.saldo.toString(),
+            status: tabungan.status,
+            dibukaAt: tabungan.dibukaAt,
+          }
+        : null,
+    };
+  },
+
   async logout(params: { jti: string; exp: number }) {
     await prisma.revokedToken.upsert({
       where: { jti: params.jti },
