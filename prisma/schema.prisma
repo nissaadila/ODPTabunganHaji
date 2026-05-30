@@ -45,6 +45,7 @@ model Transaksi {
   saldoSesudah   BigInt       @map("saldo_sesudah")
   referensi      String       @unique @db.VarChar(50)
   metode         String?      @db.VarChar(20)
+  catatan        String?      @db.VarChar(500)
   waktu          DateTime     @default(now())
 
   @@map("transaksi")

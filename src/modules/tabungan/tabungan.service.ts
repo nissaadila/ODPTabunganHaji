@@ -1,6 +1,6 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "../../library/prisma";
-import { OpenTabunganInput } from "./tabungan.schema";
+import { OpenTabunganInput, TarikInput } from "./tabungan.schema";
 import { HAJI_CONFIG } from "./tabungan.config";
 
 const generateNomorRekening = () => {
@@ -36,6 +36,13 @@ export class IdempotencyKeyConflictError extends Error {
   constructor() {
     super("Idempotency-Key sudah dipakai untuk transaksi lain");
     this.name = "IdempotencyKeyConflictError";
+  }
+}
+
+export class SaldoTidakCukupError extends Error {
+  constructor() {
+    super("Saldo tabungan tidak cukup untuk penarikan");
+    this.name = "SaldoTidakCukupError";
   }
 }
 
@@ -163,6 +170,78 @@ export const tabunganService = {
             saldoSesudah,
             referensi: idempotencyKey,
             metode: "QRIS",
+          },
+        });
+        return { tabungan: updated, transaksi };
+      });
+      return { ...result, replayed: false };
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError) {
+        if (err.code === "P2025") {
+          throw new TabunganNotFoundError();
+        }
+        if (err.code === "P2002") {
+          const winner = await prisma.transaksi.findUnique({
+            where: { referensi: idempotencyKey },
+          });
+          if (winner && winner.tabunganId === tabunganId) {
+            const tabungan = await prisma.tabunganHaji.findUnique({
+              where: { id: tabunganId },
+            });
+            return { transaksi: winner, tabungan: tabungan!, replayed: true };
+          }
+          throw new IdempotencyKeyConflictError();
+        }
+      }
+      throw err;
+    }
+  },
+
+  async tarik(params: {
+    tabunganId: string;
+    input: TarikInput;
+    idempotencyKey: string;
+  }) {
+    const { tabunganId, input, idempotencyKey } = params;
+    const nominal = BigInt(input.nominal);
+
+    const existing = await prisma.transaksi.findUnique({
+      where: { referensi: idempotencyKey },
+    });
+    if (existing) {
+      if (existing.tabunganId !== tabunganId) {
+        throw new IdempotencyKeyConflictError();
+      }
+      const tabungan = await prisma.tabunganHaji.findUnique({
+        where: { id: tabunganId },
+      });
+      return { transaksi: existing, tabungan: tabungan!, replayed: true };
+    }
+
+    try {
+      const result = await prisma.$transaction(async (tx) => {
+        const current = await tx.tabunganHaji.findUnique({
+          where: { id: tabunganId },
+        });
+        if (!current) throw new TabunganNotFoundError();
+        if (current.saldo < nominal) throw new SaldoTidakCukupError();
+
+        const saldoSebelum = current.saldo;
+        const saldoSesudah = saldoSebelum - nominal;
+        const updated = await tx.tabunganHaji.update({
+          where: { id: tabunganId },
+          data: { saldo: saldoSesudah },
+        });
+        const transaksi = await tx.transaksi.create({
+          data: {
+            tabunganId,
+            jenis: "TARIK",
+            nominal,
+            saldoSebelum,
+            saldoSesudah,
+            referensi: idempotencyKey,
+            metode: null,
+            catatan: input.catatan ?? null,
           },
         });
         return { tabungan: updated, transaksi };

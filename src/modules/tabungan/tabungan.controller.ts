@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import {
   OpenTabunganSchema,
   SetorSchema,
+  TarikSchema,
   IdParamSchema,
 } from "./tabungan.schema";
 import {
@@ -10,6 +11,7 @@ import {
   TabunganDuplicateError,
   TabunganNotFoundError,
   IdempotencyKeyConflictError,
+  SaldoTidakCukupError,
 } from "./tabungan.service";
 
 type TabunganRecord = {
@@ -35,6 +37,7 @@ const serializeTransaksi = (tr: {
   saldoSesudah: bigint;
   referensi: string;
   metode: string | null;
+  catatan?: string | null;
   waktu: Date;
 }) => ({
   ...tr,
@@ -194,6 +197,67 @@ export const tabunganController = {
       if (err instanceof TabunganNotFoundError) {
         return res.status(404).json({
           error: "NOT_FOUND",
+          message: err.message,
+        });
+      }
+      if (err instanceof IdempotencyKeyConflictError) {
+        return res.status(409).json({
+          error: "IDEMPOTENCY_KEY_CONFLICT",
+          message: err.message,
+        });
+      }
+      throw err;
+    }
+  },
+
+  async tarik(req: Request, res: Response) {
+    const paramsParsed = IdParamSchema.safeParse(req.params);
+    if (!paramsParsed.success) {
+      return res.status(400).json({
+        error: "VALIDATION_ERROR",
+        details: paramsParsed.error.flatten().fieldErrors,
+      });
+    }
+
+    const idempotencyKey = req.header("Idempotency-Key");
+    if (!idempotencyKey || idempotencyKey.trim().length === 0) {
+      return res.status(400).json({
+        error: "IDEMPOTENCY_KEY_REQUIRED",
+        message: "Header Idempotency-Key wajib diisi",
+      });
+    }
+
+    const bodyParsed = TarikSchema.safeParse(req.body);
+    if (!bodyParsed.success) {
+      return res.status(400).json({
+        error: "VALIDATION_ERROR",
+        details: bodyParsed.error.flatten().fieldErrors,
+      });
+    }
+
+    try {
+      const result = await tabunganService.tarik({
+        tabunganId: paramsParsed.data.id,
+        input: bodyParsed.data,
+        idempotencyKey,
+      });
+
+      const status = result.replayed ? 200 : 201;
+      return res.status(status).json({
+        replayed: result.replayed,
+        transaksi: serializeTransaksi(result.transaksi),
+        tabungan: serializeTabungan(result.tabungan),
+      });
+    } catch (err) {
+      if (err instanceof TabunganNotFoundError) {
+        return res.status(404).json({
+          error: "NOT_FOUND",
+          message: err.message,
+        });
+      }
+      if (err instanceof SaldoTidakCukupError) {
+        return res.status(409).json({
+          error: "SALDO_TIDAK_CUKUP",
           message: err.message,
         });
       }

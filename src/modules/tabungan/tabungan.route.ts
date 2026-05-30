@@ -11,3 +11,4 @@ tabunganRoutes.get("/estimasi", tabunganController.estimasi);
 tabunganRoutes.get("/:id", tabunganController.findById);
 tabunganRoutes.get("/:id/mutasi", tabunganController.listMutasi);
 tabunganRoutes.post("/:id/setor", tabunganController.setor);
+tabunganRoutes.post("/:id/tarik", tabunganController.tarik);
